@@ -4,6 +4,7 @@ import           Data.Array
 import           Data.Function
 import           Data.List
 import           System.Random
+import           Text.Printf
 
 data Direction
   = Horizontal
@@ -22,6 +23,12 @@ makeGrid stdGen =
           [(x,y) | x <- [0 .. 19]
                  , y <- [0 .. 19]]
         values = randomRs (0,100) stdGen
+
+prettyRow :: Grid -> Int -> String
+prettyRow grid y = concat [ printf "%4d" $ grid ! (x,y) | x <- [0..19]]
+
+prettyGrid :: Grid -> String
+prettyGrid grid = unlines [prettyRow grid y | y <- [0..19]]
 
 nextPosition :: Signpost -> Signpost
 nextPosition (x,y,d@Horizontal) = (x + 1,y,d)
@@ -51,9 +58,9 @@ solution grid =
   fmap resultAt possibleValues
   where resultAt s = (s, product $ slice grid 4 s)
 
-
 grid20 :: IO ()
 grid20 =
   do stdGen <- newStdGen
      let grid = makeGrid stdGen
      print $ solution grid
+     putStrLn $ prettyGrid grid
