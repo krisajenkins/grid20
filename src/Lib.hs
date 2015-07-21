@@ -1,6 +1,7 @@
 module Lib (grid20) where
 
 import           Data.Array
+import           System.Random
 
 data Direction
   = Horizontal
@@ -8,20 +9,21 @@ data Direction
   | Diagonal
   deriving (Eq,Ord,Show)
 
-type Grid = Array (Int, Int) Int
+type Grid = Array (Integer, Integer) Integer
 
-initialGrid :: Grid
-initialGrid =
-  array ((0,0),(19,19))
-        [((x,y),x + y) | x <- [0 .. 19]
-                       , y <- [0 .. 19]]
+makeGrid :: StdGen -> Grid
+makeGrid g = array ((0,0),(19,19)) (zip positions values)
+  where positions =
+          [(x,y) | x <- [0 .. 19]
+                 , y <- [0 .. 19]]
+        values = randomRs (0,100) g
 
-next :: Direction -> (Int,Int) -> (Int,Int)
-next Horizontal (x,y) = (x + 1,y)
-next Vertical (x,y) = (x,y + 1)
-next Diagonal (x,y) = (x + 1,y + 1)
+nextPosition :: Direction -> (Integer,Integer) -> (Integer,Integer)
+nextPosition Horizontal (x,y) = (x + 1,y)
+nextPosition Vertical (x,y) = (x,y + 1)
+nextPosition Diagonal (x,y) = (x + 1,y + 1)
 
-slice :: Grid -> Int -> (Int,Int,Direction) -> [Int]
+slice :: Grid -> Integer -> (Integer,Integer,Direction) -> [Integer]
 slice _ 0 _ = []
 slice grid count (x,y,direction) =
   (grid !
@@ -29,9 +31,11 @@ slice grid count (x,y,direction) =
   slice grid
         (count - 1)
         (x',y',direction)
-  where (x',y') = next direction (x,y)
+  where (x',y') =
+          nextPosition direction
+                       (x,y)
 
-possibleValues :: [(Int, Int, Direction)]
+possibleValues :: [(Integer, Integer, Direction)]
 possibleValues =
   [(x,y,Horizontal) | x <- [0 .. 16]
                     , y <- [0 .. 19]] ++
@@ -40,12 +44,14 @@ possibleValues =
   [(x,y,Diagonal) | x <- [0 .. 16]
                   , y <- [0 .. 16]]
 
-solution :: Int
-solution =
+solution :: Grid -> Integer
+solution grid =
   maximum $
   fmap (product .
-        slice initialGrid 4)
+        slice grid 4)
        possibleValues
 
 grid20 :: IO ()
-grid20 = print solution
+grid20 = do g <- newStdGen
+            let grid = makeGrid g
+            print $ solution grid
