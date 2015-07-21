@@ -1,6 +1,8 @@
 module Lib (grid20) where
 
 import           Data.Array
+import           Data.Function
+import           Data.List
 import           System.Random
 
 data Direction
@@ -9,33 +11,32 @@ data Direction
   | Diagonal
   deriving (Eq,Ord,Show)
 
-type Grid = Array (Integer, Integer) Integer
+type Grid = Array (Int, Int) Integer
+type Signpost = (Int,Int,Direction)
 
 makeGrid :: StdGen -> Grid
-makeGrid g = array ((0,0),(19,19)) (zip positions values)
+makeGrid stdGen =
+  array ((0,0),(19,19))
+        (zip positions values)
   where positions =
           [(x,y) | x <- [0 .. 19]
                  , y <- [0 .. 19]]
-        values = randomRs (0,100) g
+        values = randomRs (0,100) stdGen
 
-nextPosition :: Direction -> (Integer,Integer) -> (Integer,Integer)
-nextPosition Horizontal (x,y) = (x + 1,y)
-nextPosition Vertical (x,y) = (x,y + 1)
-nextPosition Diagonal (x,y) = (x + 1,y + 1)
+nextPosition :: Signpost -> Signpost
+nextPosition (x,y,d@Horizontal) = (x + 1,y,d)
+nextPosition (x,y,d@Vertical) = (x,y + 1,d)
+nextPosition (x,y,d@Diagonal) = (x + 1,y + 1,d)
 
-slice :: Grid -> Integer -> (Integer,Integer,Direction) -> [Integer]
+slice :: Grid -> Int -> Signpost -> [Integer]
 slice _ 0 _ = []
-slice grid count (x,y,direction) =
-  (grid !
-   (x,y)) :
+slice grid count signpost@(x,y,_) =
+  (grid ! (x,y)) :
   slice grid
         (count - 1)
-        (x',y',direction)
-  where (x',y') =
-          nextPosition direction
-                       (x,y)
+        (nextPosition signpost)
 
-possibleValues :: [(Integer, Integer, Direction)]
+possibleValues :: [Signpost]
 possibleValues =
   [(x,y,Horizontal) | x <- [0 .. 16]
                     , y <- [0 .. 19]] ++
@@ -44,14 +45,15 @@ possibleValues =
   [(x,y,Diagonal) | x <- [0 .. 16]
                   , y <- [0 .. 16]]
 
-solution :: Grid -> Integer
+solution :: Grid -> (Signpost, Integer)
 solution grid =
-  maximum $
-  fmap (product .
-        slice grid 4)
-       possibleValues
+  maximumBy (compare `on` snd) $
+  fmap resultAt possibleValues
+  where resultAt s = (s, product $ slice grid 4 s)
+
 
 grid20 :: IO ()
-grid20 = do g <- newStdGen
-            let grid = makeGrid g
-            print $ solution grid
+grid20 =
+  do stdGen <- newStdGen
+     let grid = makeGrid stdGen
+     print $ solution grid
