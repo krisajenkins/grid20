@@ -3,6 +3,8 @@ module Lib (grid20) where
 import           Data.Array
 import           Data.Function
 import           Data.List
+import           Data.Set      (Set)
+import qualified Data.Set      as Set
 import           System.Random
 import           Text.Printf
 
@@ -24,11 +26,20 @@ makeGrid stdGen =
                  , y <- [0 .. 19]]
         values = randomRs (0,100) stdGen
 
-prettyRow :: Grid -> Int -> String
-prettyRow grid y = concat [ printf "%4d" $ grid ! (x,y) | x <- [0..19]]
+prettyRow :: Grid -> Set (Int,Int) -> Int -> String
+prettyRow grid highlighted row =
+  concat [printf (format col) $
+          grid !
+          (col,row) | col <- [0 .. 19]]
+  where format col =
+          if (Set.member (row,col) highlighted)
+             then "\ESC[41m%4d\ESC[40m"
+             else "%4d"
 
-prettyGrid :: Grid -> String
-prettyGrid grid = unlines [prettyRow grid y | y <- [0..19]]
+prettyGrid :: Grid -> Set (Int,Int) -> String
+prettyGrid grid highlighted =
+  unlines [prettyRow grid highlighted row | row <-
+                                             [0 .. 19]]
 
 nextPosition :: Signpost -> Signpost
 nextPosition (x,y,d@Horizontal) = (x + 1,y,d)
@@ -52,8 +63,8 @@ possibleValues =
   [(x,y,Diagonal) | x <- [0 .. 16]
                   , y <- [0 .. 16]]
 
-solution :: Grid -> (Signpost, Integer)
-solution grid =
+findSolution :: Grid -> (Signpost, Integer)
+findSolution grid =
   maximumBy (compare `on` snd) $
   fmap resultAt possibleValues
   where resultAt s = (s, product $ slice grid 4 s)
@@ -62,5 +73,6 @@ grid20 :: IO ()
 grid20 =
   do stdGen <- newStdGen
      let grid = makeGrid stdGen
-     print $ solution grid
-     putStrLn $ prettyGrid grid
+         solution = findSolution grid
+     print solution
+     putStrLn $ prettyGrid grid Set.empty
